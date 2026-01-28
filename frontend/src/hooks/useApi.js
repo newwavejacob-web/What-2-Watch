@@ -56,15 +56,15 @@ export function useApi() {
   }, [fetchWithError])
 
   const getWatchHistory = useCallback(async () => {
-    return fetchWithError(`${API_BASE}/seen?user_id=${getUserId()}`)
+    return fetchWithError(`${API_BASE}/seen?user_id=${encodeURIComponent(getUserId())}`)
   }, [fetchWithError])
 
   const getHiddenGems = useCallback(async () => {
-    return fetchWithError(`${API_BASE}/hidden-gems?user_id=${getUserId()}`)
+    return fetchWithError(`${API_BASE}/hidden-gems?user_id=${encodeURIComponent(getUserId())}`)
   }, [fetchWithError])
 
   const getSimilar = useCallback(async (mediaId) => {
-    return fetchWithError(`${API_BASE}/similar/${mediaId}?user_id=${getUserId()}`)
+    return fetchWithError(`${API_BASE}/similar/${encodeURIComponent(mediaId)}?user_id=${encodeURIComponent(getUserId())}`)
   }, [fetchWithError])
 
   return {

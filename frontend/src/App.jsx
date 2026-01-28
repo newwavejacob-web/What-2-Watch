@@ -226,7 +226,7 @@ export default function App() {
               className="inline-block"
             >
               <p className="text-muted/50 font-mono text-xs tracking-widest">
-                VIBE.SEARCH // POWERED BY AI EMBEDDINGS + LLM RERANKING
+                WHAT 2 WATCH // POWERED BY AI EMBEDDINGS + LLM RERANKING
               </p>
               <div className="flex items-center justify-center gap-2 mt-2">
                 <div className="w-2 h-2 bg-neon-green animate-pulse" />

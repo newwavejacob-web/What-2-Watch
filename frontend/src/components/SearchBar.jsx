@@ -51,9 +51,9 @@ export default function SearchBar({ onSearch, isLoading }) {
         className="text-center mb-8"
       >
         <h1 className="text-5xl md:text-7xl font-bold font-mono tracking-tighter mb-2">
-          <span className="text-neon-cyan text-glow-cyan">VIBE</span>
-          <span className="text-warm-white">.</span>
-          <span className="text-neon-pink text-glow-pink">SEARCH</span>
+          <span className="text-neon-cyan text-glow-cyan">WHAT</span>
+          <span className="text-warm-white"> 2 </span>
+          <span className="text-neon-pink text-glow-pink">WATCH</span>
         </h1>
         <p className="text-muted-light font-mono text-sm tracking-widest">
           // DIGITAL CURATOR v2.049

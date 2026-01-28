@@ -109,25 +109,52 @@ func main() {
 	// Health check
 	r.GET("/health", h.GetHealth)
 
-	// Seen media endpoints (State Management)
+	// API routes with /api prefix (for production where frontend is served from same origin)
+	api := r.Group("/api")
+	{
+		// Seen media endpoints (State Management)
+		api.POST("/seen", h.PostSeen)
+		api.GET("/seen", h.GetSeen)
+		api.DELETE("/seen", h.DeleteSeen)
+
+		// Recommendation endpoints (The Core)
+		api.POST("/recommend", h.PostRecommend)
+		api.GET("/vibe", h.GetRecommendSimple)
+		api.GET("/similar/:media_id", h.GetSimilar)
+		api.GET("/hidden-gems", h.GetHiddenGems)
+
+		// Media management endpoints
+		api.POST("/media", h.PostMedia)
+		api.GET("/media/:id", h.GetMedia)
+		api.POST("/media/:id/refresh", h.PostRefreshVibe)
+
+		// Admin endpoints
+		api.GET("/stats", h.GetStats)
+		api.POST("/admin/scrape", h.PostScrapeNow)
+	}
+
+	// Legacy routes without /api prefix (for backwards compatibility)
 	r.POST("/seen", h.PostSeen)
 	r.GET("/seen", h.GetSeen)
 	r.DELETE("/seen", h.DeleteSeen)
+	r.POST("/recommend", h.PostRecommend)
+	r.GET("/vibe", h.GetRecommendSimple)
+	r.GET("/similar/:media_id", h.GetSimilar)
+	r.GET("/hidden-gems", h.GetHiddenGems)
+	r.POST("/media", h.PostMedia)
+	r.GET("/media/:id", h.GetMedia)
+	r.POST("/media/:id/refresh", h.PostRefreshVibe)
+	r.GET("/stats", h.GetStats)
+	r.POST("/admin/scrape", h.PostScrapeNow)
 
-	// Recommendation endpoints (The Core)
-	r.POST("/recommend", h.PostRecommend)      // Full vibe search with reranking
-	r.GET("/vibe", h.GetRecommendSimple)       // Simple GET endpoint (backwards compatible)
-	r.GET("/similar/:media_id", h.GetSimilar)  // Find similar to specific media
-	r.GET("/hidden-gems", h.GetHiddenGems)     // Surface quality hidden gems
+	// Serve static files from ./static directory (frontend build)
+	r.Static("/assets", "./static/assets")
+	r.StaticFile("/favicon.ico", "./static/favicon.ico")
 
-	// Media management endpoints
-	r.POST("/media", h.PostMedia)              // Ingest new media with vibe generation
-	r.GET("/media/:id", h.GetMedia)            // Get media details
-	r.POST("/media/:id/refresh", h.PostRefreshVibe) // Regenerate vibe profile
-
-	// Admin endpoints
-	r.GET("/stats", h.GetStats)                // System statistics
-	r.POST("/admin/scrape", h.PostScrapeNow)   // Trigger immediate scrape
+	// SPA fallback: serve index.html for any unmatched routes
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./static/index.html")
+	})
 
 	// Graceful shutdown
 	go func() {
