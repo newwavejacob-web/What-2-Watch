@@ -1,0 +1,28 @@
+# Environment variables (secrets)
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.db-journal
+
+# Build artifacts
+/static/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+/vendor/
+
+# Node (frontend)
+frontend/node_modules/
+frontend/dist/
