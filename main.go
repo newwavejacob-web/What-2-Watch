@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"w2w/internal/database"
 	"w2w/internal/embeddings"
 	"w2w/internal/handlers"
@@ -52,6 +53,11 @@ func getEnv(key, fallback string) string {
 }
 
 func main() {
+	// Load .env file if present
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
+	}
+
 	cfg := loadConfig()
 
 	// Validate required configuration
