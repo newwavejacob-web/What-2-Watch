@@ -25,6 +25,10 @@ WORKDIR /app
 COPY --from=backend-builder /app/vibe-server .
 COPY --from=backend-builder /app/seed-db .
 
+# Copy entrypoint
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
 # Copy frontend dist
 COPY --from=frontend-builder /app/frontend/dist ./static
 
@@ -37,4 +41,4 @@ ENV ENABLE_SCRAPER=false
 
 EXPOSE 8080
 
-CMD ["./vibe-server"]
+ENTRYPOINT ["./entrypoint.sh"]
