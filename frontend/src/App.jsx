@@ -40,6 +40,20 @@ export default function App() {
     return item.type === activeFilter
   })
 
+  // Normalize a recommendation from the API into the flat structure RecommendationCard expects
+  const normalizeRecommendation = (rec) => {
+    if (rec.media) {
+      return {
+        ...rec.media,
+        type: rec.media.media_type,
+        match_score: rec.vibe_score,
+        explanation: rec.explanation,
+        rank: rec.rank,
+      }
+    }
+    return { ...rec, type: rec.media_type }
+  }
+
   // Handle search
   const handleSearch = useCallback(async (query) => {
     setCurrentQuery(query)
@@ -48,7 +62,7 @@ export default function App() {
 
     try {
       const data = await search(query)
-      setResults(data.recommendations || data || [])
+      setResults((data.recommendations || []).map(normalizeRecommendation))
 
       // Add to search history
       setSearchHistory((prev) => {
@@ -82,7 +96,7 @@ export default function App() {
 
     try {
       const data = await getSimilar(mediaId)
-      setResults(data.recommendations || data || [])
+      setResults((data.recommendations || []).map(normalizeRecommendation))
       setCurrentQuery(`Similar to: ${mediaId}`)
     } catch (err) {
       console.error('Failed to find similar:', err)
@@ -96,7 +110,10 @@ export default function App() {
 
     try {
       const data = await getHiddenGems()
-      setResults(data.recommendations || data || [])
+      setResults((data.hidden_gems || []).map(gem => ({
+        ...normalizeRecommendation(gem),
+        is_hidden_gem: true,
+      })))
       setCurrentQuery('Hidden Gems')
     } catch (err) {
       console.error('Failed to get hidden gems:', err)
