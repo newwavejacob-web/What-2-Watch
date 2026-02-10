@@ -132,7 +132,7 @@ export default function App() {
       setHistoryLoading(true)
       try {
         const data = await getWatchHistory()
-        setWatchHistory(data.history || data || [])
+        setWatchHistory((data.seen || []).map(item => ({ ...item, type: item.media_type })))
       } catch (err) {
         console.error('Failed to load watch history:', err)
         setWatchHistory([])
