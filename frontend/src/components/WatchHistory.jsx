@@ -11,7 +11,7 @@ export default function WatchHistory({
 }) {
   const handleExport = () => {
     const dataStr = JSON.stringify(history, null, 2)
-    const blob = new Blob([dataStr], { type: 'application/json' })
+    const blob = new Blob([dataStr], { media_type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -38,7 +38,7 @@ export default function WatchHistory({
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={{ media_type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed top-0 right-0 h-full w-full max-w-md bg-void-light border-l-2 border-neon-cyan z-50 overflow-hidden"
           >
             {/* Scanlines effect */}
@@ -120,7 +120,7 @@ export default function WatchHistory({
                       {/* Type indicator */}
                       <div
                         className="absolute left-0 top-0 bottom-0 w-1"
-                        style={{ backgroundColor: mediaTypeColors[item.type] || '#00FFFF' }}
+                        style={{ backgroundColor: mediaTypeColors[item.media_type] || '#00FFFF' }}
                       />
 
                       <div className="flex items-start justify-between gap-4">
@@ -129,11 +129,11 @@ export default function WatchHistory({
                           <span
                             className="inline-block px-2 py-0.5 text-[10px] font-mono font-bold tracking-wider mb-2"
                             style={{
-                              backgroundColor: `${mediaTypeColors[item.type]}20`,
-                              color: mediaTypeColors[item.type],
+                              backgroundColor: `${mediaTypeColors[item.media_type]}20`,
+                              color: mediaTypeColors[item.media_type],
                             }}
                           >
-                            {mediaTypeLabels[item.type] || 'MEDIA'}
+                            {mediaTypeLabels[item.media_type] || 'MEDIA'}
                           </span>
 
                           {/* Title */}

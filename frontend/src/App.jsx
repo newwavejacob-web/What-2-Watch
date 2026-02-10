@@ -37,7 +37,7 @@ export default function App() {
   // Filter results by media type
   const filteredResults = results.filter((item) => {
     if (activeFilter === 'all') return true
-    return item.type === activeFilter
+    return item.media_type === activeFilter
   })
 
   // Normalize a recommendation from the API into the flat structure RecommendationCard expects
@@ -45,13 +45,12 @@ export default function App() {
     if (rec.media) {
       return {
         ...rec.media,
-        type: rec.media.media_type,
         match_score: rec.vibe_score,
         explanation: rec.explanation,
         rank: rec.rank,
       }
     }
-    return { ...rec, type: rec.media_type }
+    return rec
   }
 
   // Handle search
@@ -132,7 +131,7 @@ export default function App() {
       setHistoryLoading(true)
       try {
         const data = await getWatchHistory()
-        setWatchHistory((data.seen || []).map(item => ({ ...item, type: item.media_type })))
+        setWatchHistory(data.seen || [])
       } catch (err) {
         console.error('Failed to load watch history:', err)
         setWatchHistory([])

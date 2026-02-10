@@ -19,15 +19,15 @@ export default function RecommendationCard({
     id,
     title,
     year,
-    type = 'movie',
+    media_type = 'movie',
     vibe_profile,
     match_score,
     quality_score,
     is_hidden_gem,
   } = item
 
-  const typeColor = mediaTypeColors[type] || mediaTypeColors.movie
-  const typeLabel = mediaTypeLabels[type] || 'MEDIA'
+  const typeColor = mediaTypeColors[media_type] || mediaTypeColors.movie
+  const typeLabel = mediaTypeLabels[media_type] || 'MEDIA'
 
   const handleMarkSeen = async () => {
     if (isMarking || isSeen) return
@@ -53,7 +53,7 @@ export default function RecommendationCard({
       initial={{ opacity: 0, y: 50, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
-        type: 'spring',
+        media_type: 'spring',
         stiffness: 300,
         damping: 25,
         delay: index * 0.1,
