@@ -179,7 +179,27 @@ func main() {
 		// Check if already exists
 		existing, _ := db.GetMediaByTitle(entry.Title)
 		if existing != nil {
-			fmt.Println(" already exists, skipping")
+			// Check if embedding is missing and backfill if needed
+			emb, _ := db.GetEmbedding(existing.ID)
+			if emb != nil {
+				fmt.Println(" already exists, skipping")
+				continue
+			}
+			fmt.Print(" media exists but missing embedding, backfilling...")
+			vibeProfile := existing.VibeProfile
+			if vibeProfile == "" {
+				vibeProfile = entry.FallbackVibe
+			}
+			embedding, err := embedProvider.Embed(vibeProfile)
+			if err != nil {
+				fmt.Printf(" embed error: %v\n", err)
+				continue
+			}
+			if err := db.StoreEmbedding(existing.ID, embedding, embedProvider.ModelName()); err != nil {
+				fmt.Printf(" store error: %v\n", err)
+				continue
+			}
+			fmt.Println(" done")
 			continue
 		}
 
