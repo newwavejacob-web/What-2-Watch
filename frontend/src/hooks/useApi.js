@@ -55,6 +55,16 @@ export function useApi() {
     })
   }, [fetchWithError])
 
+  const removeSeen = useCallback(async (mediaId) => {
+    return fetchWithError(`${API_BASE}/seen`, {
+      method: 'DELETE',
+      body: JSON.stringify({
+        user_id: getUserId(),
+        media_id: mediaId,
+      }),
+    })
+  }, [fetchWithError])
+
   const getWatchHistory = useCallback(async () => {
     return fetchWithError(`${API_BASE}/seen?user_id=${encodeURIComponent(getUserId())}`)
   }, [fetchWithError])
@@ -72,6 +82,7 @@ export function useApi() {
     error,
     search,
     markAsSeen,
+    removeSeen,
     getWatchHistory,
     getHiddenGems,
     getSimilar,

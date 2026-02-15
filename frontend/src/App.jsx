@@ -12,6 +12,32 @@ import { useApi } from './hooks/useApi'
 import { useLocalStorage } from './hooks/useLocalStorage'
 import { getRandomVibe } from './lib/vibes'
 
+function Toast({ message, type = 'error', onDismiss }) {
+  useEffect(() => {
+    const timer = setTimeout(onDismiss, 3000)
+    return () => clearTimeout(timer)
+  }, [onDismiss])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.9 }}
+      className={`
+        fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg
+        font-mono text-xs tracking-wider backdrop-blur-sm
+        border
+        ${type === 'error'
+          ? 'bg-neon-pink/10 border-neon-pink/30 text-neon-pink'
+          : 'bg-neon-green/10 border-neon-green/30 text-neon-green'
+        }
+      `}
+    >
+      {message}
+    </motion.div>
+  )
+}
+
 export default function App() {
   const [results, setResults] = useState([])
   const [seenIds, setSeenIds] = useLocalStorage('vibe_seen_ids', [])
@@ -22,17 +48,36 @@ export default function App() {
   const [activeFilter, setActiveFilter] = useState('all')
   const [currentQuery, setCurrentQuery] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const {
     loading,
     error,
     search,
     markAsSeen,
+    removeSeen,
     getWatchHistory,
     getHiddenGems,
     getSimilar,
     clearError,
   } = useApi()
+
+  // Sync seen IDs from backend on initial load
+  useEffect(() => {
+    const syncSeenIds = async () => {
+      try {
+        const data = await getWatchHistory()
+        if (data.seen && Array.isArray(data.seen)) {
+          const backendIds = data.seen.map(item => item.id || item.media_id).filter(Boolean)
+          setSeenIds(prev => [...new Set([...prev, ...backendIds])])
+        }
+      } catch {
+        // Backend unavailable — localStorage cache is fine
+      }
+    }
+    syncSeenIds()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Filter results by media type
   const filteredResults = results.filter((item) => {
@@ -77,16 +122,34 @@ export default function App() {
     }
   }, [search, clearError, setSearchHistory])
 
-  // Handle mark as seen
+  // Handle mark as seen — optimistic update with rollback
   const handleMarkSeen = useCallback(async (mediaId) => {
+    // Optimistic update
+    setSeenIds((prev) => [...new Set([...prev, mediaId])])
+
     try {
       await markAsSeen(mediaId)
-      setSeenIds((prev) => [...new Set([...prev, mediaId])])
     } catch (err) {
+      // Rollback on failure
+      setSeenIds((prev) => prev.filter(id => id !== mediaId))
+      setToast({ message: 'FAILED TO SYNC — RETRYING...', type: 'error' })
       console.error('Failed to mark as seen:', err)
       throw err
     }
   }, [markAsSeen, setSeenIds])
+
+  // Handle remove from seen
+  const handleRemoveSeen = useCallback(async (mediaId) => {
+    try {
+      await removeSeen(mediaId)
+      setSeenIds((prev) => prev.filter(id => id !== mediaId))
+      // Update watch history list
+      setWatchHistory(prev => prev.filter(item => item.id !== mediaId))
+    } catch (err) {
+      setToast({ message: 'FAILED TO REMOVE', type: 'error' })
+      console.error('Failed to remove from seen:', err)
+    }
+  }, [removeSeen, setSeenIds])
 
   // Handle find similar
   const handleFindSimilar = useCallback(async (mediaId) => {
@@ -142,6 +205,16 @@ export default function App() {
     setHistoryOpen(!historyOpen)
   }, [historyOpen, getWatchHistory])
 
+  // Clear a single search history entry
+  const handleClearSearchHistoryItem = useCallback((query) => {
+    setSearchHistory(prev => prev.filter(h => h.query !== query))
+  }, [setSearchHistory])
+
+  // Clear all search history
+  const handleClearAllSearchHistory = useCallback(() => {
+    setSearchHistory([])
+  }, [setSearchHistory])
+
   // Retry on error
   const handleRetry = useCallback(() => {
     if (currentQuery) {
@@ -160,7 +233,7 @@ export default function App() {
       <div className="relative z-10 px-4 py-8 md:py-16">
         <div className="max-w-6xl mx-auto">
           {/* Hero section with search */}
-          <header className="mb-12">
+          <header className="mb-16">
             <SearchBar onSearch={handleSearch} isLoading={loading} />
             <QuickActions
               onHiddenGems={handleHiddenGems}
@@ -184,10 +257,10 @@ export default function App() {
                   className="mb-8 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-muted font-mono text-sm">QUERY:</span>
-                    <span className="text-neon-cyan font-mono">"{currentQuery}"</span>
+                    <span className="text-muted/60 font-mono text-xs tracking-wider">QUERY:</span>
+                    <span className="text-neon-cyan font-mono text-sm">"{currentQuery}"</span>
                   </div>
-                  <span className="text-muted font-mono text-sm">
+                  <span className="text-muted/60 font-mono text-xs tracking-wider">
                     {filteredResults.length} RESULTS
                   </span>
                 </motion.div>
@@ -202,9 +275,15 @@ export default function App() {
               <ErrorDisplay error={error} onRetry={handleRetry} />
             )}
 
-            {/* Empty state - initial */}
+            {/* Empty state - initial with search history */}
             {!loading && !error && !hasSearched && (
-              <EmptyState type="initial" />
+              <EmptyState
+                type="initial"
+                searchHistory={searchHistory}
+                onSearchHistoryClick={handleSearch}
+                onClearSearchHistoryItem={handleClearSearchHistoryItem}
+                onClearAllSearchHistory={handleClearAllSearchHistory}
+              />
             )}
 
             {/* Empty state - no results */}
@@ -217,7 +296,7 @@ export default function App() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
               >
                 {filteredResults.map((item, index) => (
                   <RecommendationCard
@@ -234,19 +313,19 @@ export default function App() {
           </main>
 
           {/* Footer */}
-          <footer className="mt-20 text-center">
+          <footer className="mt-24 text-center">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
               className="inline-block"
             >
-              <p className="text-muted/50 font-mono text-xs tracking-widest">
+              <p className="text-muted/30 font-mono text-[10px] tracking-[0.3em]">
                 WHAT 2 WATCH // POWERED BY AI EMBEDDINGS + LLM RERANKING
               </p>
               <div className="flex items-center justify-center gap-2 mt-2">
-                <div className="w-2 h-2 bg-neon-green animate-pulse" />
-                <span className="text-muted/30 font-mono text-xs">SYSTEM ONLINE</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-neon-green/60 animate-pulse" />
+                <span className="text-muted/20 font-mono text-[10px] tracking-wider">SYSTEM ONLINE</span>
               </div>
             </motion.div>
           </footer>
@@ -259,18 +338,30 @@ export default function App() {
         onClose={() => setHistoryOpen(false)}
         history={watchHistory}
         onFindSimilar={handleFindSimilar}
+        onRemove={handleRemoveSeen}
         isLoading={historyLoading}
       />
 
+      {/* Toast notifications */}
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onDismiss={() => setToast(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Keyboard shortcuts info */}
       <div className="fixed bottom-4 left-4 hidden md:block">
-        <div className="flex items-center gap-4 text-muted/30 font-mono text-xs">
+        <div className="flex items-center gap-3 text-muted/20 font-mono text-[10px]">
           <span>
-            <kbd className="px-1.5 py-0.5 bg-void-lighter border border-muted/20 mr-1">/</kbd>
+            <kbd className="px-1 py-0.5 bg-void-lighter/50 border border-white/[0.06] rounded mr-1">/</kbd>
             Search
           </span>
           <span>
-            <kbd className="px-1.5 py-0.5 bg-void-lighter border border-muted/20 mr-1">ESC</kbd>
+            <kbd className="px-1 py-0.5 bg-void-lighter/50 border border-white/[0.06] rounded mr-1">ESC</kbd>
             Clear
           </span>
         </div>

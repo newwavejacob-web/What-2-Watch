@@ -18,120 +18,97 @@ export default function QuickActions({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5 }}
-      className="flex flex-col md:flex-row items-center justify-center gap-4 mt-8"
+      transition={{ delay: 0.5, ease: 'easeOut' }}
+      className="flex flex-col md:flex-row items-center justify-center gap-4 mt-10"
     >
       {/* Main action buttons */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Hidden Gems */}
         <motion.button
           onClick={onHiddenGems}
           disabled={isLoading}
-          whileHover={{ scale: 1.05, y: -2 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
           className="
-            group relative flex items-center gap-2 px-5 py-3
-            bg-void border-2 border-neon-green text-neon-green
-            font-mono text-sm font-bold tracking-wider
-            hover:bg-neon-green hover:text-void
-            disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-300
+            group relative flex items-center gap-2 px-4 py-2.5
+            bg-transparent border border-neon-green/30 text-neon-green/80
+            font-mono text-xs font-bold tracking-wider rounded
+            hover:bg-neon-green/10 hover:border-neon-green/60 hover:text-neon-green
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition-all duration-300 ease-out
           "
         >
           <motion.div
-            animate={{ rotate: [0, 15, -15, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            animate={{ rotate: [0, 12, -12, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-3.5 h-3.5" />
           </motion.div>
           <span>HIDDEN GEMS</span>
-
-          {/* Glow effect on hover */}
-          <div className="
-            absolute inset-0 opacity-0 group-hover:opacity-100
-            transition-opacity duration-300 pointer-events-none
-          " style={{
-            boxShadow: '0 0 20px rgba(57, 255, 20, 0.5), inset 0 0 20px rgba(57, 255, 20, 0.1)',
-          }} />
         </motion.button>
 
         {/* Surprise Me */}
         <motion.button
           onClick={onSurpriseMe}
           disabled={isLoading}
-          whileHover={{ scale: 1.05, y: -2 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
           className="
-            group relative flex items-center gap-2 px-5 py-3
-            bg-void border-2 border-neon-pink text-neon-pink
-            font-mono text-sm font-bold tracking-wider
-            hover:bg-neon-pink hover:text-void
-            disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-300
+            group relative flex items-center gap-2 px-4 py-2.5
+            bg-transparent border border-neon-pink/30 text-neon-pink/80
+            font-mono text-xs font-bold tracking-wider rounded
+            hover:bg-neon-pink/10 hover:border-neon-pink/60 hover:text-neon-pink
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition-all duration-300 ease-out
           "
         >
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
           >
-            <Shuffle className="w-4 h-4" />
+            <Shuffle className="w-3.5 h-3.5" />
           </motion.div>
           <span>SURPRISE ME</span>
-
-          <div className="
-            absolute inset-0 opacity-0 group-hover:opacity-100
-            transition-opacity duration-300 pointer-events-none
-          " style={{
-            boxShadow: '0 0 20px rgba(255, 0, 110, 0.5), inset 0 0 20px rgba(255, 0, 110, 0.1)',
-          }} />
         </motion.button>
 
         {/* Watch History */}
         <motion.button
           onClick={onToggleHistory}
           disabled={isLoading}
-          whileHover={{ scale: 1.05, y: -2 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
           className="
-            group relative flex items-center gap-2 px-5 py-3
-            bg-void border-2 border-neon-cyan text-neon-cyan
-            font-mono text-sm font-bold tracking-wider
-            hover:bg-neon-cyan hover:text-void
-            disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-300
+            group relative flex items-center gap-2 px-4 py-2.5
+            bg-transparent border border-neon-cyan/30 text-neon-cyan/80
+            font-mono text-xs font-bold tracking-wider rounded
+            hover:bg-neon-cyan/10 hover:border-neon-cyan/60 hover:text-neon-cyan
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition-all duration-300 ease-out
           "
         >
-          <History className="w-4 h-4" />
+          <History className="w-3.5 h-3.5" />
           <span>HISTORY</span>
-
-          <div className="
-            absolute inset-0 opacity-0 group-hover:opacity-100
-            transition-opacity duration-300 pointer-events-none
-          " style={{
-            boxShadow: '0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1)',
-          }} />
         </motion.button>
       </div>
 
       {/* Divider */}
-      <div className="hidden md:block w-px h-8 bg-muted/30" />
+      <div className="hidden md:block w-px h-6 bg-white/[0.08]" />
 
       {/* Filter toggles */}
-      <div className="flex items-center gap-1 p-1 bg-void-lighter border border-muted/30">
+      <div className="flex items-center gap-0.5 p-1 bg-void-lighter/60 border border-white/[0.06] rounded-lg">
         {filterOptions.map((option) => (
           <motion.button
             key={option.id}
             onClick={() => onFilterChange(option.id)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.97 }}
             className={`
-              flex items-center gap-1.5 px-4 py-2 font-mono text-xs font-bold tracking-wider
-              transition-all duration-300
+              flex items-center gap-1.5 px-3.5 py-1.5 font-mono text-[11px] font-bold tracking-wider
+              rounded transition-all duration-250 ease-out
               ${activeFilter === option.id
-                ? 'bg-neon-cyan text-void'
-                : 'text-muted hover:text-warm-white'
+                ? 'bg-neon-cyan/15 text-neon-cyan'
+                : 'text-muted/60 hover:text-warm-white'
               }
             `}
           >

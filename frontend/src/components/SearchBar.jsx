@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Zap, Command } from 'lucide-react'
+import { Search, Zap } from 'lucide-react'
 import { getRandomPlaceholder } from '../lib/vibes'
 
 export default function SearchBar({ onSearch, isLoading }) {
@@ -48,15 +48,15 @@ export default function SearchBar({ onSearch, isLoading }) {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
+        className="text-center mb-10"
       >
-        <h1 className="text-5xl md:text-7xl font-bold font-mono tracking-tighter mb-2">
+        <h1 className="text-5xl md:text-7xl font-black font-mono tracking-tighter mb-1">
           <span className="text-neon-cyan text-glow-cyan">WHAT</span>
-          <span className="text-warm-white"> 2 </span>
+          <span className="text-warm-white mx-2 opacity-60">2</span>
           <span className="text-neon-pink text-glow-pink">WATCH</span>
         </h1>
-        <p className="text-muted-light font-mono text-sm tracking-widest">
-          // DIGITAL CURATOR v2.049
+        <p className="text-muted font-mono text-xs tracking-[0.3em] mt-2">
+          DIGITAL CURATOR v2.049
         </p>
       </motion.div>
 
@@ -72,29 +72,15 @@ export default function SearchBar({ onSearch, isLoading }) {
         <AnimatePresence>
           {(isFocused || query) && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute inset-0 -z-10"
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="absolute inset-0 -z-10 rounded-lg"
               style={{
-                background: 'radial-gradient(ellipse at center, rgba(0,255,255,0.15) 0%, transparent 70%)',
-                filter: 'blur(20px)',
+                background: 'radial-gradient(ellipse at center, rgba(0,255,255,0.1) 0%, transparent 70%)',
+                filter: 'blur(24px)',
               }}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Ripple effect when typing */}
-        <AnimatePresence>
-          {query && (
-            <motion.div
-              key={query.length}
-              initial={{ scale: 1, opacity: 0.3 }}
-              animate={{ scale: 2, opacity: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="absolute inset-0 border-2 border-neon-cyan -z-10"
-              style={{ borderRadius: 0 }}
             />
           )}
         </AnimatePresence>
@@ -102,23 +88,24 @@ export default function SearchBar({ onSearch, isLoading }) {
         {/* Main input container */}
         <div
           className={`
-            relative flex items-center gap-4 p-4 md:p-6
-            bg-void-lighter border-2 transition-all duration-300
-            ${isFocused ? 'border-neon-cyan box-glow-cyan' : 'border-muted/30'}
+            relative flex items-center gap-3 p-3 md:p-4
+            bg-void-lighter/80 backdrop-blur-sm rounded-lg
+            border transition-all duration-300 ease-out
+            ${isFocused ? 'border-neon-cyan/50 box-glow-cyan' : 'border-white/[0.08]'}
             ${isLoading ? 'animate-pulse' : ''}
           `}
         >
           {/* Search icon */}
-          <div className={`transition-colors duration-300 ${isFocused ? 'text-neon-cyan' : 'text-muted'}`}>
+          <div className={`transition-colors duration-300 flex-shrink-0 ${isFocused ? 'text-neon-cyan' : 'text-muted'}`}>
             {isLoading ? (
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               >
-                <Zap className="w-6 h-6" />
+                <Zap className="w-5 h-5" />
               </motion.div>
             ) : (
-              <Search className="w-6 h-6" />
+              <Search className="w-5 h-5" />
             )}
           </div>
 
@@ -133,42 +120,35 @@ export default function SearchBar({ onSearch, isLoading }) {
             placeholder={placeholder}
             disabled={isLoading}
             className="
-              flex-1 bg-transparent text-warm-white text-lg md:text-xl
-              font-sans placeholder:text-muted/50 placeholder:italic
+              flex-1 bg-transparent text-warm-white text-base md:text-lg
+              font-sans placeholder:text-muted/40 placeholder:italic
               focus:outline-none disabled:opacity-50
             "
           />
 
           {/* Keyboard shortcut hint */}
-          <div className="hidden md:flex items-center gap-1 text-muted text-sm font-mono">
-            <kbd className="px-2 py-1 bg-void border border-muted/30 text-xs">/</kbd>
-            <span>to focus</span>
+          <div className="hidden md:flex items-center text-muted/40 text-xs font-mono flex-shrink-0">
+            <kbd className="px-1.5 py-0.5 bg-void rounded border border-white/[0.06] text-[10px]">/</kbd>
           </div>
 
           {/* Submit button */}
           <motion.button
             type="submit"
             disabled={!query.trim() || isLoading}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             className={`
-              px-6 py-3 font-mono font-bold text-sm tracking-wider
-              transition-all duration-300
+              px-5 py-2 font-mono font-bold text-xs tracking-wider rounded
+              transition-all duration-300 flex-shrink-0
               ${query.trim() && !isLoading
                 ? 'bg-neon-cyan text-void hover:bg-neon-pink'
-                : 'bg-muted/20 text-muted cursor-not-allowed'
+                : 'bg-white/[0.04] text-muted/40 cursor-not-allowed'
               }
             `}
           >
             {isLoading ? 'SCANNING...' : 'SEARCH'}
           </motion.button>
         </div>
-
-        {/* Decorative corner accents */}
-        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-neon-cyan -translate-x-1 -translate-y-1" />
-        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-neon-cyan translate-x-1 -translate-y-1" />
-        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-neon-pink -translate-x-1 translate-y-1" />
-        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-neon-pink translate-x-1 translate-y-1" />
       </motion.form>
 
       {/* Hint text */}
@@ -176,7 +156,7 @@ export default function SearchBar({ onSearch, isLoading }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-center text-muted text-sm mt-4 font-mono"
+        className="text-center text-muted/50 text-xs mt-4 font-mono tracking-wider"
       >
         DESCRIBE YOUR VIBE. BE SPECIFIC. BE WEIRD. WE UNDERSTAND.
       </motion.p>
