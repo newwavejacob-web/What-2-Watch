@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import { getUserId } from './useLocalStorage'
 
 const API_BASE = '/api'
 
@@ -14,6 +13,8 @@ export function useApi() {
     try {
       const response = await fetch(url, {
         ...options,
+        // Send the httpOnly session cookie so the server can identify us.
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,
@@ -38,7 +39,6 @@ export function useApi() {
     return fetchWithError(`${API_BASE}/recommend`, {
       method: 'POST',
       body: JSON.stringify({
-        user_id: getUserId(),
         query,
         limit,
       }),
@@ -49,7 +49,6 @@ export function useApi() {
     return fetchWithError(`${API_BASE}/seen`, {
       method: 'POST',
       body: JSON.stringify({
-        user_id: getUserId(),
         media_id: mediaId,
       }),
     })
@@ -59,22 +58,21 @@ export function useApi() {
     return fetchWithError(`${API_BASE}/seen`, {
       method: 'DELETE',
       body: JSON.stringify({
-        user_id: getUserId(),
         media_id: mediaId,
       }),
     })
   }, [fetchWithError])
 
   const getWatchHistory = useCallback(async () => {
-    return fetchWithError(`${API_BASE}/seen?user_id=${encodeURIComponent(getUserId())}`)
+    return fetchWithError(`${API_BASE}/seen`)
   }, [fetchWithError])
 
   const getHiddenGems = useCallback(async () => {
-    return fetchWithError(`${API_BASE}/hidden-gems?user_id=${encodeURIComponent(getUserId())}`)
+    return fetchWithError(`${API_BASE}/hidden-gems`)
   }, [fetchWithError])
 
   const getSimilar = useCallback(async (mediaId) => {
-    return fetchWithError(`${API_BASE}/similar/${encodeURIComponent(mediaId)}?user_id=${encodeURIComponent(getUserId())}`)
+    return fetchWithError(`${API_BASE}/similar/${encodeURIComponent(mediaId)}`)
   }, [fetchWithError])
 
   return {

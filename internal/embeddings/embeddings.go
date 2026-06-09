@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -107,8 +108,12 @@ func (p *OpenAIProvider) ModelName() string {
 // In-Memory Vector Search (for when a full vector DB is too heavy)
 // ============================================================================
 
-// VectorStore provides in-memory vector similarity search
+// VectorStore provides in-memory vector similarity search.
+// All access to the underlying map is guarded by mu because reads (Search)
+// can run concurrently with writes (Add/Remove) via HTTP handlers, and a
+// concurrent map read/write would panic the whole process.
 type VectorStore struct {
+	mu      sync.RWMutex
 	vectors map[string][]float32 // mediaID -> embedding
 }
 
@@ -121,21 +126,29 @@ func NewVectorStore() *VectorStore {
 
 // LoadFromMap populates the store from a map of embeddings
 func (vs *VectorStore) LoadFromMap(embeddings map[string][]float32) {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
 	vs.vectors = embeddings
 }
 
 // Add stores an embedding for a media ID
 func (vs *VectorStore) Add(mediaID string, embedding []float32) {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
 	vs.vectors[mediaID] = embedding
 }
 
 // Remove deletes an embedding
 func (vs *VectorStore) Remove(mediaID string) {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
 	delete(vs.vectors, mediaID)
 }
 
 // Size returns the number of vectors in the store
 func (vs *VectorStore) Size() int {
+	vs.mu.RLock()
+	defer vs.mu.RUnlock()
 	return len(vs.vectors)
 }
 
@@ -148,6 +161,9 @@ type SearchResult struct {
 // Search finds the top-k most similar vectors to the query
 // excludeIDs allows filtering out specific media (for anti-join of seen items)
 func (vs *VectorStore) Search(query []float32, topK int, excludeIDs map[string]bool) []SearchResult {
+	vs.mu.RLock()
+	defer vs.mu.RUnlock()
+
 	if len(vs.vectors) == 0 {
 		return nil
 	}

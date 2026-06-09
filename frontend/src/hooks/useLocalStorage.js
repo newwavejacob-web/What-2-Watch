@@ -21,12 +21,3 @@ export function useLocalStorage(key, initialValue) {
 
   return [storedValue, setStoredValue]
 }
-
-export function getUserId() {
-  let userId = localStorage.getItem('vibe_user_id')
-  if (!userId) {
-    userId = 'user_' + Math.random().toString(36).substring(2, 15)
-    localStorage.setItem('vibe_user_id', userId)
-  }
-  return userId
-}

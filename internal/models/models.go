@@ -75,16 +75,16 @@ type Recommendation struct {
 	Rank        int     `json:"rank"`
 }
 
-// RecommendRequest is the input for the recommend endpoint
+// RecommendRequest is the input for the recommend endpoint.
+// Identity is derived server-side from the session cookie, never from the body.
 type RecommendRequest struct {
-	UserID string `json:"user_id" binding:"required"`
-	Query  string `json:"query" binding:"required"` // Natural language vibe query
-	Limit  int    `json:"limit,omitempty"`          // Max results (default 10)
+	Query string `json:"query" binding:"required"` // Natural language vibe query
+	Limit int    `json:"limit,omitempty"`          // Max results (default 10)
 }
 
-// SeenRequest is the input for marking media as seen
+// SeenRequest is the input for marking media as seen.
+// Identity is derived server-side from the session cookie, never from the body.
 type SeenRequest struct {
-	UserID  string   `json:"user_id" binding:"required"`
 	MediaID string   `json:"media_id" binding:"required"`
 	Rating  *float64 `json:"rating,omitempty"` // Optional 1-10 rating
 }

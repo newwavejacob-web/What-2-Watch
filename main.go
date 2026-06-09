@@ -2,44 +2,67 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"w2w/internal/database"
 	"w2w/internal/embeddings"
 	"w2w/internal/handlers"
 	"w2w/internal/llm"
+	"w2w/internal/middleware"
 	"w2w/internal/services"
 )
 
 // Config holds application configuration
 type Config struct {
-	Port          string
-	DatabasePath  string
-	OpenAIAPIKey  string
-	EnableScraper bool
-	ScrapeInterval time.Duration
+	Port               string
+	DatabasePath       string
+	OpenAIAPIKey       string
+	EnableScraper      bool
+	ScrapeInterval     time.Duration
+	SessionSecret      string
+	AdminSecret        string
+	RateLimitPerMinute int
+	CORSAllowedOrigins []string
 }
 
 func loadConfig() *Config {
 	cfg := &Config{
-		Port:           getEnv("PORT", "8080"),
-		DatabasePath:   getEnv("DATABASE_PATH", "./vibe.db"),
-		OpenAIAPIKey:   os.Getenv("OPENAI_API_KEY"),
-		EnableScraper:  getEnv("ENABLE_SCRAPER", "false") == "true",
-		ScrapeInterval: 1 * time.Hour,
+		Port:               getEnv("PORT", "8080"),
+		DatabasePath:       getEnv("DATABASE_PATH", "./vibe.db"),
+		OpenAIAPIKey:       os.Getenv("OPENAI_API_KEY"),
+		EnableScraper:      getEnv("ENABLE_SCRAPER", "false") == "true",
+		ScrapeInterval:     1 * time.Hour,
+		SessionSecret:      os.Getenv("SESSION_SECRET"),
+		AdminSecret:        os.Getenv("ADMIN_SECRET"),
+		RateLimitPerMinute: getEnvInt("RATE_LIMIT_PER_MINUTE", 20),
+		CORSAllowedOrigins: splitAndTrim(os.Getenv("CORS_ALLOWED_ORIGINS")),
 	}
 
 	if interval := os.Getenv("SCRAPE_INTERVAL"); interval != "" {
 		if d, err := time.ParseDuration(interval); err == nil {
 			cfg.ScrapeInterval = d
 		}
+	}
+
+	// A session secret is required to sign cookies. If one isn't provided,
+	// mint an ephemeral one so the app still runs — but sessions won't survive
+	// a restart, so this should only happen in development.
+	if cfg.SessionSecret == "" {
+		cfg.SessionSecret = randomSecret()
+		log.Println("WARNING: SESSION_SECRET not set. Using an ephemeral secret.")
+		log.Println("Sessions will be invalidated on restart. Set SESSION_SECRET in production.")
 	}
 
 	return cfg
@@ -50,6 +73,40 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// getEnvInt reads an integer env var, falling back on missing/invalid values.
+func getEnvInt(key string, fallback int) int {
+	if value := os.Getenv(key); value != "" {
+		if n, err := strconv.Atoi(value); err == nil {
+			return n
+		}
+	}
+	return fallback
+}
+
+// splitAndTrim turns a comma-separated env value into a clean slice.
+func splitAndTrim(value string) []string {
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// randomSecret generates a 256-bit hex secret for ephemeral session signing.
+func randomSecret() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "insecure-fallback-secret-change-me"
+	}
+	return hex.EncodeToString(b)
 }
 
 func main() {
@@ -109,49 +166,60 @@ func main() {
 	// Initialize handlers
 	h := handlers.NewHandler(db, vibeSearch, scraper)
 
-	// Setup router
-	r := gin.Default()
+	// Setup router (release mode disables debug logging / route dumps)
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
+
+	// Global middleware: security headers, CORS, and anonymous sessions.
+	r.Use(middleware.SecurityHeaders())
+	if len(cfg.CORSAllowedOrigins) > 0 {
+		r.Use(cors.New(cors.Config{
+			AllowOrigins:     cfg.CORSAllowedOrigins,
+			AllowMethods:     []string{"GET", "POST", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Content-Type", "X-Admin-Secret"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}))
+	}
+	r.Use(middleware.Session(cfg.SessionSecret))
+
+	// Rate limiter for OpenAI-billed endpoints (keyed by session, falls back to IP).
+	rateLimit := middleware.RateLimit(cfg.RateLimitPerMinute)
+	// Admin guard requiring the X-Admin-Secret header.
+	adminAuth := middleware.AdminAuth(cfg.AdminSecret)
 
 	// Health check
 	r.GET("/health", h.GetHealth)
 
-	// API routes with /api prefix (for production where frontend is served from same origin)
-	api := r.Group("/api")
-	{
+	// registerRoutes mounts the full API on a router group. Called for both the
+	// /api-prefixed routes and the legacy un-prefixed ones.
+	registerRoutes := func(rg *gin.RouterGroup) {
 		// Seen media endpoints (State Management)
-		api.POST("/seen", h.PostSeen)
-		api.GET("/seen", h.GetSeen)
-		api.DELETE("/seen", h.DeleteSeen)
+		rg.POST("/seen", h.PostSeen)
+		rg.GET("/seen", h.GetSeen)
+		rg.DELETE("/seen", h.DeleteSeen)
 
-		// Recommendation endpoints (The Core)
-		api.POST("/recommend", h.PostRecommend)
-		api.GET("/vibe", h.GetRecommendSimple)
-		api.GET("/similar/:media_id", h.GetSimilar)
-		api.GET("/hidden-gems", h.GetHiddenGems)
+		// Recommendation endpoints (The Core) — rate-limited (OpenAI cost)
+		rg.POST("/recommend", rateLimit, h.PostRecommend)
+		rg.GET("/vibe", rateLimit, h.GetRecommendSimple)
+		rg.GET("/similar/:media_id", h.GetSimilar)
+		rg.GET("/hidden-gems", h.GetHiddenGems)
 
-		// Media management endpoints
-		api.POST("/media", h.PostMedia)
-		api.GET("/media/:id", h.GetMedia)
-		api.POST("/media/:id/refresh", h.PostRefreshVibe)
+		// Media management endpoints — rate-limited (OpenAI cost)
+		rg.POST("/media", rateLimit, h.PostMedia)
+		rg.GET("/media/:id", h.GetMedia)
+		rg.POST("/media/:id/refresh", rateLimit, h.PostRefreshVibe)
 
-		// Admin endpoints
-		api.GET("/stats", h.GetStats)
-		api.POST("/admin/scrape", h.PostScrapeNow)
+		// Admin endpoints — behind shared-secret auth
+		rg.GET("/stats", adminAuth, h.GetStats)
+		rg.POST("/admin/scrape", adminAuth, h.PostScrapeNow)
 	}
 
+	// API routes with /api prefix (for production where frontend is served from same origin)
+	registerRoutes(r.Group("/api"))
 	// Legacy routes without /api prefix (for backwards compatibility)
-	r.POST("/seen", h.PostSeen)
-	r.GET("/seen", h.GetSeen)
-	r.DELETE("/seen", h.DeleteSeen)
-	r.POST("/recommend", h.PostRecommend)
-	r.GET("/vibe", h.GetRecommendSimple)
-	r.GET("/similar/:media_id", h.GetSimilar)
-	r.GET("/hidden-gems", h.GetHiddenGems)
-	r.POST("/media", h.PostMedia)
-	r.GET("/media/:id", h.GetMedia)
-	r.POST("/media/:id/refresh", h.PostRefreshVibe)
-	r.GET("/stats", h.GetStats)
-	r.POST("/admin/scrape", h.PostScrapeNow)
+	registerRoutes(&r.RouterGroup)
 
 	// Serve static files from ./static directory (frontend build)
 	r.Static("/assets", "./static/assets")
