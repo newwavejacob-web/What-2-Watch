@@ -1,0 +1,42 @@
+# Production stack for What-2-Watch.
+#   caddy      -> terminates TLS for chidaucf.win, reverse-proxies to the app
+#   movie-app  -> Go server (built from Dockerfile) serving API + SPA on :8080
+#
+# Usage on the droplet:
+#   docker compose up -d --build
+#
+# The Go container reads its secrets from .env (never commit that file).
+services:
+  movie-app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: "8080"
+      DATABASE_PATH: /app/data/vibe.db
+      ENABLE_SCRAPER: "false"
+    volumes:
+      # Persist the SQLite DB (and imported movies) across restarts/rebuilds.
+      - app-data:/app/data
+    expose:
+      - "8080"
+    # Not published to the host directly — only Caddy talks to it.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - movie-app
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

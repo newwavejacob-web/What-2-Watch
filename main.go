@@ -169,6 +169,7 @@ func main() {
 	// Setup router (release mode disables debug logging / route dumps)
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	r.TrustedPlatform = gin.PlatformCloudflare
 	r.Use(gin.Logger(), gin.Recovery())
 
 	// Global middleware: security headers, CORS, and anonymous sessions.

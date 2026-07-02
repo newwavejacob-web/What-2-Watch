@@ -114,7 +114,19 @@ func (p *OpenAIProvider) ModelName() string {
 // concurrent map read/write would panic the whole process.
 type VectorStore struct {
 	mu      sync.RWMutex
-	vectors map[string][]float32 // mediaID -> embedding
+	vectors map[string][]float32
+}
+
+func (vs *VectorStore) Add(id string, vec []float32) {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
+	vs.vectors[id] = vec
+}
+
+func (vs *VectorStore) Remove(id string) {
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
+	delete(vs.vectors, id)
 }
 
 // NewVectorStore creates an empty vector store
@@ -129,20 +141,6 @@ func (vs *VectorStore) LoadFromMap(embeddings map[string][]float32) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 	vs.vectors = embeddings
-}
-
-// Add stores an embedding for a media ID
-func (vs *VectorStore) Add(mediaID string, embedding []float32) {
-	vs.mu.Lock()
-	defer vs.mu.Unlock()
-	vs.vectors[mediaID] = embedding
-}
-
-// Remove deletes an embedding
-func (vs *VectorStore) Remove(mediaID string) {
-	vs.mu.Lock()
-	defer vs.mu.Unlock()
-	delete(vs.vectors, mediaID)
 }
 
 // Size returns the number of vectors in the store

@@ -70,8 +70,8 @@ type RedditMention struct {
 // Recommendation is the output format for the API
 type Recommendation struct {
 	Media       Media   `json:"media"`
-	VibeScore   float64 `json:"vibe_score"`   // Cosine similarity to query
-	Explanation string  `json:"explanation"`  // LLM-generated reason for recommendation
+	VibeScore   float64 `json:"vibe_score"`  // Cosine similarity to query
+	Explanation string  `json:"explanation"` // LLM-generated reason for recommendation
 	Rank        int     `json:"rank"`
 }
 

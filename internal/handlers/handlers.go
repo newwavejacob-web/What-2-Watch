@@ -13,9 +13,9 @@ import (
 
 // Handler holds dependencies for HTTP handlers
 type Handler struct {
-	db            *database.DB
-	vibeSearch    *services.VibeSearchService
-	scraper       *services.RedditScraper
+	db         *database.DB
+	vibeSearch *services.VibeSearchService
+	scraper    *services.RedditScraper
 }
 
 // NewHandler creates a new handler with dependencies
@@ -164,10 +164,10 @@ func (h *Handler) PostRecommend(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"query":           result.Query,
+		"query":            result.Query,
 		"total_candidates": result.TotalCandidates,
-		"filtered_seen":   result.FilteredCount,
-		"recommendations": result.Recommendations,
+		"filtered_seen":    result.FilteredCount,
+		"recommendations":  result.Recommendations,
 	})
 }
 
