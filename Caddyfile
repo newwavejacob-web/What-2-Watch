@@ -1,0 +1,23 @@
+# Caddy automatically provisions and renews a Let's Encrypt TLS cert for this
+# domain, as long as the domain's DNS A record points at this droplet and
+# ports 80/443 are open. Change the hostname if you use a different domain.
+chidaucf.win {
+	encode gzip zstd
+
+	# All app traffic goes to the Go container over the internal compose network.
+	reverse_proxy movie-app:8080
+
+	# Belt-and-suspenders: the Go app already sets these, but enforce here too.
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
+
+# Redirect the apex-less/www variant to the canonical host (optional; harmless
+# if the www record doesn't exist).
+www.chidaucf.win {
+	redir https://chidaucf.win{uri} permanent
+}

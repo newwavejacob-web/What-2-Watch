@@ -6,15 +6,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"w2w/internal/database"
+	"w2w/internal/middleware"
 	"w2w/internal/models"
 	"w2w/internal/services"
 )
 
 // Handler holds dependencies for HTTP handlers
 type Handler struct {
-	db            *database.DB
-	vibeSearch    *services.VibeSearchService
-	scraper       *services.RedditScraper
+	db         *database.DB
+	vibeSearch *services.VibeSearchService
+	scraper    *services.RedditScraper
 }
 
 // NewHandler creates a new handler with dependencies
@@ -33,23 +34,24 @@ func NewHandler(db *database.DB, vibeSearch *services.VibeSearchService, scraper
 // PostSeen marks a media item as seen by the user
 // POST /seen
 func (h *Handler) PostSeen(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
 	var req models.SeenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
 		return
 	}
 
-	// Verify user exists (or create if using auto-create)
-	user, err := h.db.GetUser(req.UserID)
+	// Verify the session's user exists (or create on first write)
+	user, err := h.db.GetUser(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
 	if user == nil {
-		// Auto-create user for simplicity
 		user = &models.User{
-			ID:        req.UserID,
-			Username:  req.UserID,
+			ID:        userID,
+			Username:  userID,
 			CreatedAt: time.Now(),
 		}
 		if err := h.db.CreateUser(user); err != nil {
@@ -69,9 +71,9 @@ func (h *Handler) PostSeen(c *gin.Context) {
 		return
 	}
 
-	// Mark as seen
+	// Mark as seen — scoped to the session's user
 	seen := &models.SeenMedia{
-		UserID:    req.UserID,
+		UserID:    userID,
 		MediaID:   req.MediaID,
 		Rating:    req.Rating,
 		WatchedAt: time.Now(),
@@ -85,18 +87,13 @@ func (h *Handler) PostSeen(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Marked as seen",
 		"media":   media.Title,
-		"user_id": req.UserID,
 	})
 }
 
 // GetSeen retrieves the user's seen list
 // GET /seen?user_id=xxx
 func (h *Handler) GetSeen(c *gin.Context) {
-	userID := c.Query("user_id")
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id query parameter required"})
-		return
-	}
+	userID := middleware.GetUserID(c)
 
 	seenMedia, err := h.db.GetSeenMediaWithDetails(userID)
 	if err != nil {
@@ -114,6 +111,8 @@ func (h *Handler) GetSeen(c *gin.Context) {
 // DeleteSeen removes a media from the seen list
 // DELETE /seen
 func (h *Handler) DeleteSeen(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
 	var req models.SeenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -121,7 +120,7 @@ func (h *Handler) DeleteSeen(c *gin.Context) {
 	}
 
 	_, err := h.db.Exec(`DELETE FROM seen_media WHERE user_id = ? AND media_id = ?`,
-		req.UserID, req.MediaID)
+		userID, req.MediaID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove"})
 		return
@@ -137,6 +136,8 @@ func (h *Handler) DeleteSeen(c *gin.Context) {
 // PostRecommend handles vibe-based recommendation requests
 // POST /recommend
 func (h *Handler) PostRecommend(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
 	var req models.RecommendRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
@@ -151,7 +152,7 @@ func (h *Handler) PostRecommend(c *gin.Context) {
 
 	// Perform vibe search with anti-join
 	result, err := h.vibeSearch.Search(services.SearchConfig{
-		UserID:       req.UserID,
+		UserID:       userID,
 		Query:        req.Query,
 		TopK:         20,
 		FinalResults: limit,
@@ -163,10 +164,10 @@ func (h *Handler) PostRecommend(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"query":           result.Query,
+		"query":            result.Query,
 		"total_candidates": result.TotalCandidates,
-		"filtered_seen":   result.FilteredCount,
-		"recommendations": result.Recommendations,
+		"filtered_seen":    result.FilteredCount,
+		"recommendations":  result.Recommendations,
 	})
 }
 
@@ -174,7 +175,7 @@ func (h *Handler) PostRecommend(c *gin.Context) {
 // GET /vibe?q=xxx&user_id=xxx
 func (h *Handler) GetRecommendSimple(c *gin.Context) {
 	query := c.Query("q")
-	userID := c.DefaultQuery("user_id", "default")
+	userID := middleware.GetUserID(c)
 
 	if query == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Tell me your vibe! Use ?q=your+vibe+description"})
@@ -203,7 +204,7 @@ func (h *Handler) GetRecommendSimple(c *gin.Context) {
 // GET /similar/:media_id?user_id=xxx
 func (h *Handler) GetSimilar(c *gin.Context) {
 	mediaID := c.Param("media_id")
-	userID := c.DefaultQuery("user_id", "default")
+	userID := middleware.GetUserID(c)
 
 	recs, err := h.vibeSearch.GetSimilarToMedia(userID, mediaID, 10)
 	if err != nil {
@@ -220,7 +221,7 @@ func (h *Handler) GetSimilar(c *gin.Context) {
 // GetHiddenGems returns high-quality but less popular recommendations
 // GET /hidden-gems?user_id=xxx
 func (h *Handler) GetHiddenGems(c *gin.Context) {
-	userID := c.DefaultQuery("user_id", "default")
+	userID := middleware.GetUserID(c)
 
 	gems, err := h.vibeSearch.GetHiddenGems(userID, 10)
 	if err != nil {
