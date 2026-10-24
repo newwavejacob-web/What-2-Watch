@@ -1,0 +1,16 @@
+# Keep secrets, databases, and local build junk out of the build context
+.git
+.claude
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+data/
+static/
+frontend/node_modules/
+frontend/dist/
+tmdb-import
+vibe-server
+seed-db
+*.md

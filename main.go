@@ -224,7 +224,7 @@ func main() {
 
 	// Serve static files from ./static directory (frontend build)
 	r.Static("/assets", "./static/assets")
-	r.StaticFile("/favicon.ico", "./static/favicon.ico")
+	r.StaticFile("/favicon.svg", "./static/favicon.svg")
 
 	// SPA fallback: serve index.html for any unmatched routes
 	r.NoRoute(func(c *gin.Context) {

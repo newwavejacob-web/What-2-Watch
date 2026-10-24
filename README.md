@@ -1,6 +1,6 @@
 # W2W - Vibe-First Recommendation Engine
 
-**Domain:** chidaucf.win
+**Domain:** what2watch.win
 **Stack:** Go (Gin) + React (Vite) + SQLite + OpenAI
 **Purpose:** AI-powered movie/TV/anime recommendations based on "vibes" - aesthetic and emotional descriptors rather than genres or actors.
 
@@ -12,7 +12,7 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │                            Caddy                                  │
 │                (Reverse Proxy + SSL + Security Headers)          │
-│                    chidaucf.win → movie-app:8080                 │
+│                    what2watch.win → movie-app:8080               │
 └──────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -487,9 +487,55 @@ Adds sample media with pre-written vibe profiles.
 ### Docker
 
 ```bash
-# From project root
-docker compose up --build movie-app
+# Standalone (this repo's own Caddy + app). Do NOT use on the shared droplet,
+# where the root Caddy already owns ports 80/443.
+docker compose up -d --build
 ```
+
+### Deploying on the shared droplet
+
+The droplet runs one Caddy for every site, from a root `docker-compose.yml`
+that sits next to this repo (`./w2w`). That root stack needs:
+
+```yaml
+# docker-compose.yml (droplet root)
+  movie-app:
+    build: ./w2w
+    restart: unless-stopped
+    env_file:
+      - ./w2w/.env
+    environment:
+      - DATABASE_PATH=/app/data/vibe.db
+      - PORT=8080
+      - ENABLE_SCRAPER=false
+    volumes:
+      - ./w2w/data:/app/data
+    networks:
+      - app-network
+```
+
+```caddy
+# Caddyfile (droplet root)
+what2watch.win {
+    encode zstd gzip
+    reverse_proxy movie-app:8080
+}
+www.what2watch.win {
+    redir https://what2watch.win{uri} permanent
+}
+```
+
+Then, from the droplet root:
+
+```bash
+git -C w2w pull
+docker compose up -d --build movie-app
+docker compose restart caddy   # only if the Caddyfile changed
+```
+
+The SQLite DB lives in `w2w/data/` (gitignored), so pulls never touch it.
+`what2watch.win` is proxied by Cloudflare: SSL/TLS mode must be **Full (strict)**
+(Flexible causes a redirect loop with Caddy).
 
 ---
 
