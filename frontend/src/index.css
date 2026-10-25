@@ -23,25 +23,36 @@
   --animate-flicker: flicker 0.15s infinite;
 }
 
-/* Base styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Base styles. These MUST stay in @layer base: unlayered rules beat Tailwind
+   utilities, so an unlayered `* { margin: 0 }` would silently kill mx-auto,
+   px-4, etc. and pin the whole layout to the left edge. */
+@layer base {
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    background-color: #0a0a0a;
+    color: #F5F5F5;
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-body {
-  background-color: #0a0a0a;
-  color: #F5F5F5;
-  font-family: 'Inter', system-ui, sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
+  /* Input styling */
+  input:focus {
+    outline: none;
+  }
+
+  /* Button reset */
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
 }
 
 /* Noise texture overlay */
@@ -313,19 +324,6 @@ body::before {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-}
-
-/* Input styling */
-input:focus {
-  outline: none;
-}
-
-/* Button reset */
-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
 }
 
 /* Loading shimmer */
